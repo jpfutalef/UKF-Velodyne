@@ -36,33 +36,17 @@ def unscentedTransform(x, P, kappa=1.0):
     return X, W
 
 
-def sigmaPoints_addPoints(x, Q, Xprev, kappa=1.0):
-    n = np.size(x, 0)
+def unscentedTransform_addPoints(x, Q, Xprev, kappa=1.0):
+    n = np.size(x)
     a = np.sqrt(2.0 * n + kappa)
-    '''
-    sP = msqrt(Q)
 
-    X = np.empty([n, 4 * n + 1])
-    W = np.empty([1, 4 * n + 1])
-    X[:, 0:2 * n + 1] = Xprev
-    W[0,0] = kappa / (2.0 * n + kappa)
-    for i in range(0, n):
-        X[:, i + 2 * n + 1] = x + a * sP[:,i - 1]
-        X[:, i + 3 * n + 1] = x - a * sP[:,i - 1]
-        W[0, i + 1] = 1 / (2.0 * (2.0 * n + kappa))
-        W[0, i + n + 1] = 1 / (2.0 * (2.0 * n + kappa))
-        W[0, i + 2*n + 1] = 1 / (2.0 * (2.0 * n + kappa))
-        W[0, i + 3*n + 1] = 1 / (2.0 * (2.0 * n + kappa))
-    '''
-
+    # non-scalar case
     if np.size(Q) > 1:
         sP = msqrt(Q)
-
         X = np.empty([n, 4 * n + 1])
         W = np.empty([1, 4 * n + 1])
         X[:, 0:2 * n + 1] = Xprev
         W[0, 0] = kappa / (2.0 * n + kappa)
-
         for i in range(0, n):
             X[:, i + 2 * n + 1] = x + a * sP[:, i - 1]
             X[:, i + 3 * n + 1] = x - a * sP[:, i - 1]
@@ -70,6 +54,8 @@ def sigmaPoints_addPoints(x, Q, Xprev, kappa=1.0):
             W[0, i + n + 1] = 1 / (2.0 * (2.0 * n + kappa))
             W[0, i + 2 * n + 1] = 1 / (2.0 * (2.0 * n + kappa))
             W[0, i + 3 * n + 1] = 1 / (2.0 * (2.0 * n + kappa))
+
+    # scalar case
     else:
         sP = np.sqrt(Q)
         X = np.empty([1, 5])
@@ -98,15 +84,27 @@ def evalSigmaPoints(sp, f):
 
     evaluatedSP[:, 0] = firstEvaluatedSP[:, 0]
     for i in range(1, nColumns):
-        col = f(np.vstack(sp[:, i]))
-        evaluatedSP[:, i] = col[:, 0]
+        evaluatedSP[:, i] = f(np.vstack(sp[:, i]))[:, 0]
+    return evaluatedSP
+
+
+def evalSigmaPointsWithInput(sp, u, f):
+    firstEvaluatedSP = f(np.vstack(sp[:, 0]), u)
+    nColumns = np.size(sp, 1)
+    nRows = np.size(firstEvaluatedSP, 0)
+
+    evaluatedSP = np.empty([nRows, nColumns])
+
+    evaluatedSP[:, 0] = firstEvaluatedSP[:, 0]
+    for i in range(1, nColumns):
+        evaluatedSP[:, i] = f(np.vstack(sp[:, i]), u)[:, 0]
     return evaluatedSP
 
 
 def UKF_additiveNoise(xk0, Pk0, uk0, yk1, Q, R, F, H, kappa=1):
     Xk0, Wk0 = unscentedTransform(xk0, Pk0)
 
-    # Prediccion
+    # Prediction
     Xk1_prior = np.empty_like(Xk0)
     for i in range(0, np.size(Xk0, 1)):
         Xk1_prior[:, i] = F(Xk0[:, i], uk0)
