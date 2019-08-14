@@ -1,14 +1,19 @@
 from python.ukf import *
 import numpy as np
+import matplotlib.pyplot as plt
 
 
 # Testing functions
 def F1D1D(x, u):
-    return np.vstack(x / (1 + x ** 2) + 0.5 * u)
+    return np.vstack([x[0, 0] / (1 + x[0, 0] ** 2) + 0.5 * u])
 
 
 def F2D2D(x, u):
     return np.vstack([[x[0, 0] ** 2], [x[1, 0] ** 2]])
+
+
+def F2D2D_linearModel(x, u):
+    return np.vstack([x[0, 0] + u[0, 0], x[1, 0] + u[1, 0]])
 
 
 def F3D3D(x, u):
@@ -16,133 +21,58 @@ def F3D3D(x, u):
 
 
 def H1D1D(x):
-    return np.vstack(x ** 2)
+    return np.vstack([x[0, 0] ** 2])
 
 
 def H2D2D(x):
     return np.vstack([[x[0, 0] ** 2], [x[1, 0] ** 2]])
 
 
+def H2D2D_cartesianToPolar(x):
+    r = np.sqrt(x[0, 0] ** 2 + x[1, 0] ** 2)
+    theta = np.arctan2(x[1, 0], x[0, 0])  # ensures the range (-pi, pi] for quadrants I, II and IV
+    if x[0, 0] < 0 and x[1, 0] < 0:
+        theta += 2 * np.pi  # ensures the range (0, 2pi] for quadrant III
+    return np.vstack([r, theta])
+
+
 def H3D3D(x):
     return np.vstack([[x[0] ** 2], [x[1] ** 2], [x[2] ** 2]])
 
 
-# Unscented transformation tests
+# Unscented Kalman filter tests
 
-# UT test scalar
-xk = 1.5
-Pk = 2.0
+# Time to simulate
+tEnd = 10
+t = np.arange(tEnd + 1)
 
-XK, WK = unscentedTransform(xk, Pk)
+# UKF test 2D
 
-print("Sigma points (scalar): ", XK)
-print("Weight (scalar): ", WK)
+xk0 = np.vstack([2.0, 2.0])
+PK0 = np.eye(2)
+uk = np.vstack([1.0, 1.0])
 
-YK = evalSigmaPoints(XK, H1D1D)
-yk = weightedSum(YK, WK)
+Q = 0.2 * np.eye(2)
+R = 0.5 * np.eye(2)
 
-print("Projected sigma points: ", YK)
-print("Projected mean: ", yk)
-print()
+yk = H2D2D_cartesianToPolar(xk0)
 
-# UT test 2D
-xk = np.vstack([[1.5], [2.0]])
-Pk = 2 * np.eye(2)
+x = np.empty([np.size(xk0), tEnd + 1])
+y = np.empty([np.size(yk), tEnd + 1])
+xEst = np.empty([np.size(xk0), tEnd + 1])
 
-XK, WK = unscentedTransform(xk, Pk)
+y[:, 0] = yk[:, 0]
+x[:, 0] = xk0[:, 0]
+xEst[:, 0] = xk0[:, 0]
 
-print("Sigma points (2D case): ", XK)
-print("Weight (2D case): ", WK)
+for k in t[1:]:
+    xk1 = F2D2D_linearModel(xk0, uk) + np.vstack(np.random.normal(scale=[Q[0, 0], Q[1, 1]]))
+    yk = H2D2D_cartesianToPolar(xk1) + np.vstack(np.random.normal(scale=[R[0, 0], R[1, 1]]))
+    x[:, k] = xk1[:, 0]
+    y[:, k] = yk[:, 0]
+    xk0, PK0 = UKF_additiveNoise(xk0, PK0, uk, yk, Q, R, F2D2D_linearModel, H2D2D_cartesianToPolar)
+    xEst[:, k] = xk0[:, 0]
 
-YK = evalSigmaPoints(XK, H2D2D)
-yk = weightedSum(YK, WK)
-
-print("Projected sigma points: ", YK)
-print("Projected mean: ", yk)
-print()
-
-# UT test 3D
-xk = np.array([[1.5], [2.0], [1.8]])
-Pk = 2 * np.eye(3)
-
-XK, WK = unscentedTransform(xk, Pk)
-
-print("Sigma points (3D case): ", XK)
-print("Weight (3D case): ", WK)
-
-YK = evalSigmaPoints(XK, H3D3D)
-yk = weightedSum(YK, WK)
-
-print("Projected sigma points: ", YK)
-print("Projected mean: ", yk)
-print()
-
-# Unscented transformation with previous points test
-
-# UT test scalar
-xk = 1.5
-uk = 1.0
-Pk = 2.0
-
-XK, WK = unscentedTransform(xk, Pk)
-
-print("Sigma points (scalar): ", XK)
-print("Weight (scalar): ", WK)
-
-XK1 = evalSigmaPointsWithInput(XK, uk, F1D1D)
-xk1 = weightedSum(XK1, WK)
-
-Qk = 1.5
-XK1_new, WK_new = unscentedTransform_addPoints(xk1, Qk, XK1)
-
-YK = evalSigmaPoints(XK1_new, H1D1D)
-yk = weightedSum(YK, WK_new)
-
-print("Projected sigma points: ", YK)
-print("Projected mean: ", yk)
-print()
-
-# UT test 2D
-xk = np.vstack([[1.5], [2.0]])
-uk = 1.0
-Pk = 2 * np.eye(2)
-
-XK, WK = unscentedTransform(xk, Pk)
-
-print("Sigma points (2D case): ", XK)
-print("Weight (2D case): ", WK)
-
-XK1 = evalSigmaPointsWithInput(XK, uk, F2D2D)
-xk1 = weightedSum(XK1, WK)
-
-Qk = 1.5 * np.eye(2)
-XK1_new, WK_new = unscentedTransform_addPoints(xk1, Qk, XK1)
-
-YK = evalSigmaPoints(XK1_new, H2D2D)
-yk = weightedSum(YK, WK_new)
-
-print("Projected sigma points: ", YK)
-print("Projected mean: ", yk)
-print()
-
-# UT test 3D
-xk = np.array([[1.5], [2.0], [1.8]])
-Pk = 2 * np.eye(3)
-
-XK, WK = unscentedTransform(xk, Pk)
-
-print("Sigma points (3D case): ", XK)
-print("Weight (3D case): ", WK)
-
-XK1 = evalSigmaPointsWithInput(XK, uk, F3D3D)
-xk1 = weightedSum(XK1, WK)
-
-Qk = 1.5 * np.eye(3)
-XK1_new, WK_new = unscentedTransform_addPoints(xk1, Qk, XK1)
-
-YK = evalSigmaPoints(XK1_new, H3D3D)
-yk = weightedSum(YK, WK_new)
-
-print("Projected sigma points: ", YK)
-print("Projected mean: ", yk)
-print()
+plt.plot(x[0, :], x[1, :])
+plt.plot(xEst[0, :], xEst[1,:])
+plt.show()
