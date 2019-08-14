@@ -101,7 +101,7 @@ def evalSigmaPointsWithInput(sp, u, f):
     return evaluatedSP
 
 
-def UKF_additiveNoise(xk0, Pk0, uk0, yk1, Q, R, F, H, kappax=1.0, kappay=1.0):
+def UKF_additiveNoise(xk0, Pk0, uk0, yk1, Q, R, F, H, kappax=-1.0, kappay=-1.0):
     Xk0, Wk0 = unscentedTransform(xk0, Pk0, kappa=kappax)
 
     # Prediction
