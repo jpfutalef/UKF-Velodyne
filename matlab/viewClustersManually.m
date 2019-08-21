@@ -1,0 +1,33 @@
+% Se asume una variable clusterbag con la data
+M = [];
+samplingFreq = 30;
+t = 0;
+
+[nRows, nColumns] = size(clusterBag);
+
+for i = 1:nRows
+    % show points
+    n = rowSizeUntilNan(clusterBag{i,:});
+    nClusters = n/3;
+    clusters = clusterBag{i,1:3:3*nClusters};
+    x = clusterBag{i,2:3:3*nClusters};
+    y = clusterBag{i,3:3:3*nClusters};
+    plot(0,0,'*',x,y,'o')
+    %text(x+.2,y+.2,strtrim(cellstr(num2str(clusters'))'));
+    text(x+.2,y+.2,strtrim(cellstr(num2str((1:nClusters)'))'));
+    xlim([-15 15]);
+    ylim([-15 15]);
+
+    % ask the user
+    cluster = input('cluster num? ');
+    if cluster
+        x_ = x(cluster);
+        y_ = y(cluster);
+        % save
+        M(end + 1,:) = [t, clusters(cluster), x_, y_];
+    end
+    % update time
+    t = t + 1/samplingFreq;
+end
+
+csvwrite('end_clusters_bag2.csv', M);
