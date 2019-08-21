@@ -71,3 +71,4 @@ fabric.properties
 
 # catkin workspace src folder
 /src
+.idea
