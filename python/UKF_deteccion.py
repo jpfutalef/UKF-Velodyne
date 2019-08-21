@@ -63,11 +63,11 @@ t0 = 0.0  # tiempo inicial
 # parametros
 sigma_x = 0.1  # ruido proceso x
 sigma_y = 0.2  # ruido proceso y
-sigma_vx = 0.1  # ruido proceso y
-sigma_vy = 0.2  # ruido proceso y
+sigma_vx = 5.0  # ruido proceso vx
+sigma_vy = 5.0  # ruido proceso vy
 
-range_accuracy = 0.03  # m
-angular_resolution = 0.4  # deg
+range_accuracy = 0.1  # m
+angular_resolution = 2.0  # deg
 
 # vectores a guardar
 t = np.zeros([1, 1])
@@ -89,11 +89,15 @@ for k in range(0, np.size(vals, 0)):
     uk = np.vstack([dt])
 
     # covarianza proceso
+    '''
     Q = np.array([[np.power(sigma_x, 2), 0, 0, 0],
                   [0, np.power(sigma_vx, 2), 0, 0],
                   [0, 0, np.power(sigma_y, 2), 0],
                   [0, 0, 0, np.power(sigma_vy, 2)]])
-
+    '''
+    v = np.array([sigma_vx * np.power(dt, 2) / 2.0, sigma_vx * dt,
+                  sigma_vy * np.power(dt, 2) / 2.0, sigma_vy * dt])
+    Q = np.outer(v, v)
     # covarianza medicion
     R = np.array([[np.power(range_accuracy, 2), 0.0],
                   [0.0, np.power(np.deg2rad(angular_resolution), 2)]])
@@ -153,29 +157,27 @@ for k in range(0, np.size(vals, 0)):
 # plotting
 
 plt.subplot(221)
-plt.plot(t, xMea)
-plt.plot(t, xEst)
+plt.plot(t, xMea, '-*')
+plt.plot(t, xEst, '-*')
 plt.legend(('medido', 'estimado'))
 plt.title('X')
 
 plt.subplot(222)
-plt.plot(t, yMea)
-plt.plot(t, yEst)
+plt.plot(t, yMea, '-*')
+plt.plot(t, yEst, '-*')
 plt.legend(('medido', 'estimado'))
 plt.title('Y')
 
 plt.subplot(223)
-plt.plot(t, rMea)
-plt.plot(t, rEst)
+plt.plot(t, rMea, '-*')
+plt.plot(t, rEst, '-*')
 plt.legend(('medido', 'estimado'))
 plt.title('r')
 
 plt.subplot(224)
-plt.plot(t, thetaMea)
-plt.plot(t, thetaEst)
+plt.plot(t, thetaMea, '-*')
+plt.plot(t, thetaEst, '-*')
 plt.legend(('medido', 'estimado'))
 plt.title('theta')
 
 plt.show()
-
-
