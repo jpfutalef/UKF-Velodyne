@@ -11,10 +11,22 @@ from sklearn.cluster import DBSCAN
 from velodyne_utils import VelodyneMetaCluster, VelodyneCluster, VelodyneDetectorParameters, cart2pol, data_pl_k_comp
 
 import pandas as pd
-def clustersToCSV(bagfile, name):
+
+
+def clustersToCSV(name):
+    # open bagFile
+    pathToBag = "../data/rawData/" + name + ".bag"
+    print("Opening: ", pathToBag)
+    bagFile = rosbag.Bag(pathToBag, 'r')
+
+    # where is going to be stored the end data
+    pathToCSV = "../data/rawClusters/clusters_" + name + ".csv"
+    print("Saving to: ", pathToCSV)
+
+    # work for every message
     counter = 0
     data = []
-    for topic_, msg, t in bagfile.read_messages(topics='/velodyne_points'):
+    for topic_, msg, t in bagFile.read_messages(topics='/velodyne_points'):
         counter += 1
         print("Count: ", counter, "Time: ", t)
         print(msg.header)
@@ -244,7 +256,7 @@ def clustersToCSV(bagfile, name):
 
         ##################################################################################################################
 
-        #fig, ax = plt.subplots()
+        # fig, ax = plt.subplots()
         colors = ['r', 'g', 'b', 'y', 'c', 'm', 'k']  #
         axis_ = [-15, 15, -15, 15]
         row = []
@@ -263,18 +275,18 @@ def clustersToCSV(bagfile, name):
 
                 x, y = metacluster.get_xyz_np_points()
 
-                #ax.plot(x, y, colors[c] + '.')
+                # ax.plot(x, y, colors[c] + '.')
                 x_ = x.mean()
                 y_ = y.mean()
                 if x_ > axis_[0] and x_ < axis_[1] and y_ > axis_[2] and y_ < axis_[3]:
                     row.extend([i, x_, y_])
-                    #print("color: ", c, "nro cluster: ", i, "x: ", x_, "y: ", y_)
-                    #ax.text(x_ + 0.2, y_ - 0.2, str(i), color=colors[c], fontsize=12)
+                    # print("color: ", c, "nro cluster: ", i, "x: ", x_, "y: ", y_)
+                    # ax.text(x_ + 0.2, y_ - 0.2, str(i), color=colors[c], fontsize=12)
                 ok += 1
         print('ok: ', ok)
-        #print("row to append: ", row)
+        # print("row to append: ", row)
         data.append(row)
-        #print(data)
+        # print(data)
         '''
         ax.set_aspect('equal')
         ax.grid(True, which='both')
@@ -286,5 +298,5 @@ def clustersToCSV(bagfile, name):
     plt.show()
     '''
     df = pd.DataFrame(data)
-    df.to_csv("clusters_" + name + ".csv")
+    df.to_csv(pathToCSV)
     return

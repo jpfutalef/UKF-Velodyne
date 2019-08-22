@@ -1,12 +1,11 @@
 from python.ukf import *
-# from python.personDetectionVelodyne import *
 import numpy as np
 import matplotlib.pyplot as plt
-# import rosbag
 import pandas as pd
 
 
-# Testing functions
+# FUNCIONES DE PROCESO Y MEDICION. PUEDEN AGREGARSE O QUITARSE
+
 def F2D2D_linearModel(x, u):
     return np.vstack([x[0, 0] + u[0, 0],
                       x[1, 0] + u[1, 0]])
@@ -41,16 +40,13 @@ def H4D4D_identity(x):
                       x[3, 0]])
 
 
-'''
-# para formar clusters raw
-bagfile = rosbag.Bag('../data/2.bag', 'r')
-clustersToCSV(bagfile, "bag2")
+### PARAMETROS MODIFICABLES
 
-'''
+# Nombre del bagfile
+bagName = 'bag2'
 
-# UKF para detecciones ya obtenidas
-
-vals = pd.read_csv('matlab/end_clusters_bag2.csv').values
+bagPath = '../data/labeledClusters/end_clusters_' + bagName + '.csv'
+vals = pd.read_csv(bagPath).values
 
 # condiciones iniciales
 xk0 = np.vstack([0.0,
@@ -60,14 +56,23 @@ xk0 = np.vstack([0.0,
 PK0 = 1.0 * np.eye(4)  # matriz de covarianza inicial
 t0 = 0.0  # tiempo inicial
 
-# parametros
+# Ruido proceso
 sigma_x = 0.1  # ruido proceso x
 sigma_y = 0.2  # ruido proceso y
 sigma_vx = 5.0  # ruido proceso vx
 sigma_vy = 5.0  # ruido proceso vy
 
+# Ruido medicion
 range_accuracy = 0.1  # m
 angular_resolution = 2.0  # deg
+
+# Funciones a utilizar
+F = F4D4D_linearModel
+H = H4D2D_cartesianToPolar
+
+# metodo sigma points
+
+### PARAMETROS NO MODIFICABLES
 
 # vectores a guardar
 t = np.zeros([1, 1])
@@ -83,21 +88,17 @@ rMea = np.zeros([1, 1])
 thetaMea = np.zeros([1, 1])
 
 for k in range(0, np.size(vals, 0)):
+    # obtener delta tiempo
     t1 = vals[k, 0]
     dt = t1 - t0
 
     uk = np.vstack([dt])
 
     # covarianza proceso
-    '''
-    Q = np.array([[np.power(sigma_x, 2), 0, 0, 0],
-                  [0, np.power(sigma_vx, 2), 0, 0],
-                  [0, 0, np.power(sigma_y, 2), 0],
-                  [0, 0, 0, np.power(sigma_vy, 2)]])
-    '''
     v = np.array([sigma_vx * np.power(dt, 2) / 2.0, sigma_vx * dt,
                   sigma_vy * np.power(dt, 2) / 2.0, sigma_vy * dt])
     Q = np.outer(v, v)
+
     # covarianza medicion
     R = np.array([[np.power(range_accuracy, 2), 0.0],
                   [0.0, np.power(np.deg2rad(angular_resolution), 2)]])
@@ -106,32 +107,11 @@ for k in range(0, np.size(vals, 0)):
     yk = H4D2D_cartesianToPolar(np.vstack([vals[k, 2], 0.0, vals[k, 3], 0.0]))
 
     # estimar estado con UKF
-    xk0, PK0 = UKF_additiveNoise(xk0, PK0, uk, yk, Q, R,
-                                 F4D4D_linearModel, H4D2D_cartesianToPolar,
+    xk0, PK0 = UKF_additiveNoise(xk0, PK0, uk, yk, Q, R, F, H,
                                  algo='Julier', kappa=-1.0)
-    '''
-
-    xk0, PK0 = UKF_additiveNoise(xk0, PK0, uk, yk, Q, R,
-                                 F4D4D_linearModel, H4D2D_cartesianToPolar,
-                                 algo='Wan', kappa=0.0, alpha=1e-3, beta=2.0)
-
-    '''
-
-    '''
-    
-    # covarianza proceso
-    Q = 0.01*np.eye(4)
-    # covarianza medicion
-    R = np.array([[sigma2_x, 0, 0, 0],
-                  [0, 0.5, 0, 0],
-                  [0, 0, sigma2_x, 0],
-                  [0, 0, 0, 0.5]])
-    yk = H4D4D_identity(np.vstack([vals[k, 2], 0.0, vals[k, 3], 0.0]))
-    xk0, PK0 = UKF_additiveNoise(xk0, PK0, uk, yk, Q, R, F4D4D_linearModel, H4D4D_identity)
-    '''
 
     print("Measured output:\n", yk)
-    print("Output with estimated state: \n", H4D2D_cartesianToPolar(xk0))
+    print("Output with estimated state: \n", H(xk0))
     print("Estimated state:\n", xk0)
     print("Q: \n", Q)
     print("R: \n", R)
@@ -143,7 +123,7 @@ for k in range(0, np.size(vals, 0)):
     xMea = np.append(xMea, vals[k, 2])
     yMea = np.append(yMea, vals[k, 3])
 
-    ykEst = H4D2D_cartesianToPolar(xk0)
+    ykEst = H(xk0)
     rEst = np.append(rEst, ykEst[0, 0])
     thetaEst = np.append(thetaEst, ykEst[1, 0])
     rMea = np.append(rMea, yk[0, 0])
