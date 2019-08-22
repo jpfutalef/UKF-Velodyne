@@ -1,8 +1,8 @@
-from python.ukf import *
+from ukf import *
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
-
+import sys
 
 # FUNCIONES DE PROCESO Y MEDICION. PUEDEN AGREGARSE O QUITARSE
 
@@ -40,10 +40,13 @@ def H4D4D_identity(x):
                       x[3, 0]])
 
 
-### PARAMETROS MODIFICABLES
+### ABRIS BAGFILE
+bagName = '2'
 
-# Nombre del bagfile
-bagName = 'bag2'
+if len(sys.argv) > 1:
+    bagName = sys.argv[1]
+
+### PARAMETROS MODIFICABLES
 
 bagPath = '../data/labeledClusters/end_clusters_' + bagName + '.csv'
 vals = pd.read_csv(bagPath).values
@@ -56,21 +59,22 @@ xk0 = np.vstack([0.0,
 PK0 = 1.0 * np.eye(4)  # matriz de covarianza inicial
 t0 = 0.0  # tiempo inicial
 
+# Funciones de proceso y medicion
+F = F4D4D_linearModel
+H = H4D2D_cartesianToPolar
+
 # Ruido proceso
 sigma_x = 0.1  # ruido proceso x
 sigma_y = 0.2  # ruido proceso y
-sigma_vx = 5.0  # ruido proceso vx
-sigma_vy = 5.0  # ruido proceso vy
+sigma_vx = .2  # ruido proceso vx
+sigma_vy = .2  # ruido proceso vy
 
 # Ruido medicion
 range_accuracy = 0.1  # m
 angular_resolution = 2.0  # deg
 
-# Funciones a utilizar
-F = F4D4D_linearModel
-H = H4D2D_cartesianToPolar
-
-# metodo sigma points
+# dispersion de sigma points
+kappa = -1.0
 
 ### PARAMETROS NO MODIFICABLES
 
@@ -87,9 +91,9 @@ yMea = np.zeros([1, 1])
 rMea = np.zeros([1, 1])
 thetaMea = np.zeros([1, 1])
 
-for k in range(0, np.size(vals, 0)):
+for row in vals:
     # obtener delta tiempo
-    t1 = vals[k, 0]
+    t1 = row[0]
     dt = t1 - t0
 
     uk = np.vstack([dt])
@@ -104,30 +108,33 @@ for k in range(0, np.size(vals, 0)):
                   [0.0, np.power(np.deg2rad(angular_resolution), 2)]])
 
     # obtener medicion
-    yk = H4D2D_cartesianToPolar(np.vstack([vals[k, 2], 0.0, vals[k, 3], 0.0]))
+    yk = H(np.vstack([row[2], 0.0, row[3], 0.0]))
 
     # estimar estado con UKF
     xk0, PK0 = UKF_additiveNoise(xk0, PK0, uk, yk, Q, R, F, H,
-                                 algo='Julier', kappa=-1.0)
+                                 algo='Julier', kappa=kappa)
 
+    # Mostrar resultados
+    '''
     print("Measured output:\n", yk)
     print("Output with estimated state: \n", H(xk0))
     print("Estimated state:\n", xk0)
     print("Q: \n", Q)
     print("R: \n", R)
     print("Covariance P0k:\n", PK0, "\n")
+    '''
 
     # guardar en vectores
-    xEst = np.append(xEst, xk0[0, 0])
-    yEst = np.append(yEst, xk0[2, 0])
-    xMea = np.append(xMea, vals[k, 2])
-    yMea = np.append(yMea, vals[k, 3])
+    rMea = np.append(rMea, yk[0, 0])
+    thetaMea = np.append(thetaMea, yk[1, 0])
+    xMea = np.append(xMea, row[2])
+    yMea = np.append(yMea, row[3])
 
     ykEst = H(xk0)
     rEst = np.append(rEst, ykEst[0, 0])
     thetaEst = np.append(thetaEst, ykEst[1, 0])
-    rMea = np.append(rMea, yk[0, 0])
-    thetaMea = np.append(thetaMea, yk[1, 0])
+    xEst = np.append(xEst, xk0[0, 0])
+    yEst = np.append(yEst, xk0[2, 0])
 
     t = np.append(t, t1)
 
