@@ -297,6 +297,7 @@ def clustersToCSV(name):
         plt.pause(0.3)
     plt.show()
     '''
+
     df = pd.DataFrame(data)
     df.to_csv(pathToCSV)
     return

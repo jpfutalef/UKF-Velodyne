@@ -3,6 +3,9 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import sys
+from animateClusters import *
+import rosbag
+
 
 # FUNCIONES DE PROCESO Y MEDICION. PUEDEN AGREGARSE O QUITARSE
 
@@ -48,8 +51,9 @@ if len(sys.argv) > 1:
 
 ### PARAMETROS MODIFICABLES
 
-bagPath = '../data/labeledClusters/end_clusters_' + bagName + '.csv'
-vals = pd.read_csv(bagPath).values
+csvPath = '../data/labeledClusters/end_clusters_' + bagName + '.csv'
+bagPath = '../data/rawData/' + bagName + '.bag'
+vals = pd.read_csv(csvPath).values
 
 # condiciones iniciales
 xk0 = np.vstack([0.0,
@@ -70,11 +74,14 @@ sigma_vx = .2  # ruido proceso vx
 sigma_vy = .2  # ruido proceso vy
 
 # Ruido medicion
-range_accuracy = 0.1  # m
-angular_resolution = 2.0  # deg
+range_accuracy = 0.08  # m
+angular_resolution = 1.0  # deg
 
 # dispersion de sigma points
 kappa = -1.0
+
+# frecuencia de muestreo
+fSampling = 10
 
 ### PARAMETROS NO MODIFICABLES
 
@@ -93,7 +100,7 @@ thetaMea = np.zeros([1, 1])
 
 for row in vals:
     # obtener delta tiempo
-    t1 = row[0]
+    t1 = row[0] * 30.0 / 10.0
     dt = t1 - t0
 
     uk = np.vstack([dt])
@@ -168,3 +175,6 @@ plt.legend(('medido', 'estimado'))
 plt.title('theta')
 
 plt.show()
+
+with rosbag.Bag(bagPath, 'r') as bagFile:
+    a = InteractiveBagWithFilter(bagFile, t, xEst, yEst, freq=fSampling)

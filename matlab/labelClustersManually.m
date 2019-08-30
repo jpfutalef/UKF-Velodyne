@@ -5,7 +5,7 @@ filePath = strcat('../data/rawClusters/clusters_', fileName, '.csv');
 disp(strcat('Opening file in: ', filePath));
 
 %% Variables configurables
-samplingFreq = 30;
+fSampling = 10;
 t = 0;
 
 %% Abrir el archivo csv
@@ -36,7 +36,7 @@ for i = 1:nRows
         M(end + 1,:) = [t, clusters(cluster), x_, y_];
     end
     % update time
-    t = t + 1/samplingFreq;
+    t = t + 1/fSampling;
 end
 
 csvPath = strcat('../data/labeledClusters/end_clusters_', fileName, '.csv');
