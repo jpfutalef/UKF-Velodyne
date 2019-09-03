@@ -43,22 +43,22 @@ def H4D4D_identity(x):
                       x[3, 0]])
 
 
-### ABRIS BAGFILE
+### BAGFILE
 bagName = '2'
 
 if len(sys.argv) > 1:
     bagName = sys.argv[1]
 
-### PARAMETROS MODIFICABLES
-
 csvPath = '../data/labeledClusters/end_clusters_' + bagName + '.csv'
 bagPath = '../data/rawData/' + bagName + '.bag'
 vals = pd.read_csv(csvPath).values
 
+### PARAMETROS MODIFICABLES
+
 # condiciones iniciales
-xk0 = np.vstack([0.0,
+xk0 = np.vstack([vals[0, 2],
                  vals[0, 2] / vals[0, 0],
-                 0.0,
+                 vals[0, 3],
                  vals[0, 3] / vals[0, 0]])  # estado inicial propuesto
 PK0 = 1.0 * np.eye(4)  # matriz de covarianza inicial
 t0 = 0.0  # tiempo inicial
@@ -68,14 +68,12 @@ F = F4D4D_linearModel
 H = H4D2D_cartesianToPolar
 
 # Ruido proceso
-sigma_x = 0.1  # ruido proceso x
-sigma_y = 0.2  # ruido proceso y
-sigma_vx = .2  # ruido proceso vx
-sigma_vy = .2  # ruido proceso vy
+sigma_vx = .05  # ruido proceso vx  0.05 0.5 1.5
+sigma_vy = 1.5  # ruido proceso vy  0.05 0.5 1.5
 
 # Ruido medicion
-range_accuracy = 0.08  # m
-angular_resolution = 1.0  # deg
+range_accuracy = 0.03  # m
+angular_resolution = .4  # deg
 
 # dispersion de sigma points
 kappa = -1.0
@@ -100,7 +98,7 @@ thetaMea = np.zeros([1, 1])
 
 for row in vals:
     # obtener delta tiempo
-    t1 = row[0] * 30.0 / 10.0
+    t1 = row[0] #* 30.0 / 10.0   # si la frecuencia en el preprocesamiento es 10, quitar: *30/10
     dt = t1 - t0
 
     uk = np.vstack([dt])
@@ -111,8 +109,10 @@ for row in vals:
     Q = np.outer(v, v)
 
     # covarianza medicion
-    R = np.array([[np.power(range_accuracy, 2), 0.0],
-                  [0.0, np.power(np.deg2rad(angular_resolution), 2)]])
+    v = np.array([np.power(range_accuracy, 2), np.power(np.deg2rad(angular_resolution), 2)])
+    R = np.outer(v, v)
+    # R = np.array([[np.power(range_accuracy, 2), 0.0],
+    #              [0.0, np.power(np.deg2rad(angular_resolution), 2)]])
 
     # obtener medicion
     yk = H(np.vstack([row[2], 0.0, row[3], 0.0]))
@@ -150,6 +150,7 @@ for row in vals:
 
 # plotting
 
+'''
 plt.subplot(221)
 plt.plot(t, xMea, '-*')
 plt.plot(t, xEst, '-*')
@@ -175,6 +176,42 @@ plt.legend(('medido', 'estimado'))
 plt.title('theta')
 
 plt.show()
+'''
+
+plt.ion()
+plt.subplot(221)
+plt.plot(t, xEst, '-*')
+# plt.legend(('estimado'))
+plt.title('Estimated X')
+plt.xlabel('t (s)')
+plt.ylabel('X (m)')
+
+plt.subplot(222)
+plt.plot(t, yEst, '-*')
+# plt.legend(('estimado'))
+plt.title('Estimated Y')
+plt.xlabel('t (s)')
+plt.ylabel('Y (m)')
+
+plt.subplot(223)
+plt.plot(t, rMea, '-*')
+# plt.legend(('medido'))
+plt.title('Measured r')
+plt.xlabel('t (s)')
+plt.ylabel('r (m)')
+
+plt.subplot(224)
+plt.plot(t, thetaMea, '-*')
+plt.title(r'Measured $\theta$')
+# plt.legend(('medido'))
+plt.xlabel('t (s)')
+plt.ylabel(r'$\theta$ (rad)')
+
+plt.tight_layout(pad=0.4, w_pad=0.5, h_pad=1.0)
+plt.show()
+
+plt.ioff()
+
 
 with rosbag.Bag(bagPath, 'r') as bagFile:
     a = InteractiveBagWithFilter(bagFile, t, xEst, yEst, freq=fSampling)

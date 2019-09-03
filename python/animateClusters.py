@@ -106,13 +106,19 @@ class InteractiveBag:
 
 
 class InteractiveBagWithFilter:
-    def __init__(self, bag, tFilter, xFilter, yFilter, freq=10):
+    def __init__(self, bag, tFilter, xFilter, yFilter, xEst=None, yEst=None, freq=10):
         self.fig = plt.figure()
         self.ax = self.fig.add_subplot(111)
         self.ax.set_xlim(left=-10, right=10)
         self.ax.set_ylim(bottom=-10, top=10)
-        self.line, = self.ax.plot([0], [0], 'o')  # empty line
-        self.detPoints, = self.ax.plot([0], [0], 'ro')  # empty line
+
+        self.mapPoints, = self.ax.plot([0], [0], 'o')
+        self.filterPoints, = self.ax.plot([0], [0], 'ro')
+        self.drawEstimationPoints = False
+        if xEst != None and yEst!=None:
+            self.estimationPoints, = self.ax.plot([0], [0], 'go')
+            self.drawEstimationPoints = True
+
         self.ax.set_xlabel('X [m]')
         self.ax.set_ylabel('Y [m]')
         self.xs = [0]
@@ -129,20 +135,20 @@ class InteractiveBagWithFilter:
 
         self.counter = 0
         self.updatePoints()
-        self.cid = self.line.figure.canvas.mpl_connect('key_press_event', self)
+        self.cid = self.mapPoints.figure.canvas.mpl_connect('key_press_event', self)
         plt.show()
 
     def __call__(self, event):
         if event.key == 'right':
             self.counter += 1
             self.updatePoints()
-            self.line.figure.canvas.draw()
-            self.detPoints.figure.canvas.draw()
+            self.mapPoints.figure.canvas.draw()
+            self.filterPoints.figure.canvas.draw()
         elif event.key == 'left' and self.counter - 1 >= 0:
             self.counter -= 1
             self.updatePoints()
-            self.line.figure.canvas.draw()
-            self.detPoints.figure.canvas.draw()
+            self.mapPoints.figure.canvas.draw()
+            self.filterPoints.figure.canvas.draw()
 
     def updatePoints(self):
         # obtain msg in counter position
@@ -163,9 +169,9 @@ class InteractiveBagWithFilter:
                 Y.append(point[1])
         self.xs = X
         self.ys = Y
-        self.line.set_data(self.xs, self.ys)
-        self.detPoints.set_data(self.filter_x[i], self.filter_y[i])
-        self.ax.set_title('Frame number ' + str(self.counter))
+        self.mapPoints.set_data(self.xs, self.ys)
+        self.filterPoints.set_data(self.filter_x[i], self.filter_y[i])
+        self.ax.set_title('Frame number ' + str(self.counter) + '. Time: ' + str(self.t[i]))
 
     def fixFilterValues(self, tFilter, xFilter, yFilter):
         j = 0
@@ -191,3 +197,5 @@ class InteractiveBagWithFilter:
         for _, _, _ in self.bag.read_messages(topics='/velodyne_points'):
             i += 1
         return i
+
+
